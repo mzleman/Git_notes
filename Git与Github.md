@@ -983,35 +983,101 @@ git status查询状态，若处于rebase交互状态但抛出了错误，需要�
 
 假设现有两个人维护开发同一个分支，可能会产生以下的情景：
 
-### 两人修改了不同的文件
+### 情景1. 两人修改了不同的文件
 
-Coder1 在commit abc123的基础上修改了index.html
+Coder1 在commit abc123的基础上修改了`index.html`
 
-Coder2 在commit abc123的基础上修改了style.css
+Coder2 在commit abc123的基础上修改了`style.css`
 
-Coder1 提交了修改了index.html的版本commit def456
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
 
-Coder2 提交修改style.css的版本会<font color ="red">报错</font>
+Coder2 提交修改style.css的版本，再向远端push时会<font color ="red">报错</font>
 
-### 两人修改了同一文件的不同区域
+### 情景2. 两人修改了同一文件的不同区域
 
-Coder1 在commit abc123的基础上修改了index.html的第一行
+Coder1 在commit abc123的基础上修改了index.html的`第一行`
 
-Coder2 在commit abc123的基础上修改了index.html的第二行
+Coder2 在commit abc123的基础上修改了index.html的`第二行`
 
-Coder1 提交了修改了index.html的版本commit def456
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
 
-Coder2 提交修改index.html的版本会<font color ="red">报错</font>
+Coder2 提交修改index.html的版本，再向远端push时会<font color ="red">报错</font>。
 
 
 
-> 以上两种情况，只需要后提交的Coder在提交前进行一次fetch+merge的操作就可以解决问题，因为多人修改不同的文件、修改同一文件的不同区域都不会引发合并冲突。
+> 以上两种情况，只需要后提交的Coder在提交前进行一次 fetch + merge 的操作，就可以解决问题。因为多人修改不同的文件、修改同一文件的不同区域都不会引发合并冲突。
 >
 > fetch + merge = pull
 >
 > 但是建议使用fetch后查看一下当前分支和远端分支的区别。
 
 
+
+### 情景3. 两人修改了同一文件的同一区域
+
+Coder1 在commit abc123的基础上修改了index.html的`第一行`
+
+Coder2 在commit abc123的基础上修改了index.html的`第一行`
+
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
+
+Coder2 提交修改index.html的版本，再向远端push时会<font color ="red">报错</font>
+
+> 这种情况要求Coder2进行一次 fetch + merge + 合并冲突 的操作，然后再将合并后新版本push到远程库。
+
+
+
+### 情景4. 一人只修改了文件名，另一人只修改了该文件内容
+
+Coder1 在commit abc123的基础上将index.html改名为index.htm
+
+Coder2 在commit abc123的基础上修改了index.html的`第一行`
+
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
+
+Coder2 提交自己的的版本（包含修改了第一行的index.html），再向远端push时会<font color ="red">报错</font>
+
+> 此时需要Coder2将远端分支 fetch + merge  / pull 即可。由于修改文件名的操作并不会修改blob对象的哈希值，所以Git在Coder2拉取def456时能感知到index.html只是修改了文件名，而没有修改文件内容，所以可以直接合并。
+
+
+
+### 情景5. 两人同时修改了一个文件的文件名
+
+Coder1 在commit abc123的基础上将index.html改名为index.htm
+
+Coder2 在commit abc123的基础上将index.html改名为main.htm
+
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
+
+Coder2 提交自己的新版本（包含main.htm），再向远端push时会<font color ="red">报错</font>
+
+> 此时需要Coder2将远端分支 fetch + merge / pull 拉取远端分支最新内容。由于修改文件名的操作不会修改blob对象的hash值，Coder2的新版本和远端分支最近版本（Coder1提交的def456）之间的冲突`在于文件名的冲突`，所以需要依次执行
+>
+> git rm index.html
+>
+> git rm main.htm/index.htm
+>
+> git add index.htm/main.htm
+>
+> 即在main.htm 和 index.htm中选择一个，提交成新commit后再push到远端分支。
+
+
+
+### 情景6. 两人同时修改了一个文件的文件名，并对内容都做了修改。
+
+Coder1 在commit abc123的基础上将index.html改名为index.htm，修改了第一行内容。
+
+Coder2 在commit abc123的基础上将index.html改名为main.htm，修改了第一行内容。
+
+Coder1 提交了修改了index.html的版本commit def456，同时push到远端分支。
+
+Coder2 提交自己的新版本（包含main.htm），再向远端push时会<font color ="red">报错</font>
+
+> 尽管不建议这样处理，但还是进行简单说明处理办法：
+>
+> 在这种情况下，Git会认为 远端分支删除了index.html、新增了index.htm，本地新增了main.htm，只需要简单的合并即可，并不会发生冲突。
+
+> ❗  **强烈建议** ❗：在重命名某个文件后进行一次commit操作，同时push到远程库。让重命名文件的操作能够让团队协作者发现，从而可以提前发现问题。！！！
 
 
 
